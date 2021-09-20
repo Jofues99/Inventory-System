@@ -1,0 +1,309 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+public class Inventory : MonoBehaviour
+{
+    CameraLook cam;
+
+    public Image currentSlotImage;
+
+    public int currentSlotNum;
+
+    public GameObject currentSlot;
+
+    public GameObject[] BarraSlots;
+
+    public bool activar_inv;
+
+    public GameObject[] inv;
+
+    private int enabledSlots;
+
+    //INVENTORY 
+    private int allSlots;
+    [HideInInspector] public GameObject[] slot;
+    public GameObject slotHolder;
+
+    //Take Items
+    public Item currentItem;
+
+    [SerializeField] int takeItemLimitDistance = 4;
+    public GameObject ItemHit;
+
+    //Player
+
+    PlayerMovement player;
+
+    //KEYS
+    private KeyCode[] keyCodes = {
+         KeyCode.Alpha1,
+         KeyCode.Alpha2,
+         KeyCode.Alpha3,
+         KeyCode.Alpha4,
+         KeyCode.Alpha5,
+         KeyCode.Alpha6,
+         KeyCode.Alpha7,
+         KeyCode.Alpha8,
+         KeyCode.Alpha9,
+     };
+
+    public int n;
+
+    void Start()
+    {
+        player = GetComponent<PlayerMovement>();
+        cam = GameObject.FindWithTag("MainCamera").GetComponent<CameraLook>();
+
+        //INVENTORY
+        allSlots = slotHolder.transform.childCount;
+
+        slot = new GameObject[allSlots];
+        
+        for (int i = 0; i < allSlots; i++)
+        {
+        slot[i] = slotHolder.transform.GetChild(i).gameObject;
+
+            if(slot[i].GetComponent<Slot>().item == null)
+            {
+                slot[i].GetComponent<Slot>().empty = true;
+            }
+        }
+        currentSlot = slot[0];
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        //Open and close inventory
+
+        if (activar_inv)
+        {
+            foreach (GameObject go in inv)
+            {
+                go.SetActive(true);
+            }
+
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
+            cam.enableCameraMove = false;
+
+            player.stunned = true;
+        }
+        else
+        {
+
+            foreach (GameObject go in inv)
+            {
+                go.SetActive(false);
+            }
+
+            Cursor.visible = false;
+            Cursor.lockState = CursorLockMode.Locked;
+            cam.enableCameraMove = true;
+
+            player.stunned = false;
+        }
+
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            activar_inv = !activar_inv;
+        }
+
+        //Raycast to Select Items
+
+        RaycastHit hit;
+
+        Ray ray = cam.gameObject.GetComponent<Camera>().ScreenPointToRay(Input.mousePosition);
+
+        if (Physics.Raycast(cam.transform.position, cam.gameObject.transform.forward, out hit, takeItemLimitDistance))
+        {
+            var item = hit.collider.gameObject;
+
+            if (item.tag == "Item")
+            {
+                ItemHit = item;
+
+                if (Input.GetMouseButtonDown(1))
+                {
+                    TakeItem();
+                }
+            }
+            else if (item.tag == "ChestInteract")
+            {
+                ItemHit = item;
+
+                if (Input.GetMouseButtonDown(1))
+                {
+                    player.ItemInteract();
+                    item.gameObject.GetComponent<ChestInteract>().ChangeState();
+                }
+
+            }else if (item.tag == "Chest")
+            {
+                ItemHit = item;
+            }
+            else if(item.tag == "Block")
+            {
+                ItemHit = item;
+            }
+            else
+            {
+                ItemHit = null;
+            }
+        }
+        else
+        {
+            ItemHit = null;
+        }
+
+
+        //KEYS
+        for (int i = 0; i < 10; i++)
+        {
+            if (Input.GetKeyDown((KeyCode)(48 + i)))
+            {
+                currentSlotNum = 48 + i - 49;
+
+                ChangeCurrentItem();
+            }
+        }
+
+        //MOUSE WHEEL
+        var mouseSrollValue = (Input.GetAxis("Mouse ScrollWheel"));
+
+        if (mouseSrollValue > 0)
+        {
+            n += Mathf.RoundToInt(0.9f + mouseSrollValue);
+            n = Mathf.Clamp(n, 0, 9);
+
+            currentSlotNum = currentSlotNum + n;
+
+                if(currentSlotNum > 8)
+                {
+                    currentSlotNum = 0;
+                }
+
+            ChangeCurrentItem();
+
+            n = 0;
+        }
+        else if (mouseSrollValue < 0)
+        {
+            n -= Mathf.RoundToInt(-0.9f - mouseSrollValue);
+            n = Mathf.Clamp(n, 0, 9);
+
+            currentSlotNum = currentSlotNum - n;
+
+            if (currentSlotNum < 0)
+            {
+                currentSlotNum = 8;
+            }
+
+            ChangeCurrentItem();
+
+            n = 0;
+        }
+
+        void ChangeCurrentItem()
+        {
+            currentSlot = slot[currentSlotNum];
+
+            currentSlotImage.transform.position = slot[currentSlotNum].transform.position;
+
+            if (!slot[currentSlotNum].GetComponent<Slot>().empty)
+            {
+                slot[currentSlotNum].GetComponent<Slot>().UseItem();
+            }
+            else if (currentItem != null)
+            {
+                currentItem.gameObject.SetActive(false);
+                currentItem = null;
+            }
+        }
+
+    }
+
+    public void AddItem(GameObject itemObject, int itemID, string itemType, int itemDamage, Sprite itemIcon, bool itemCumulative, int itemMaxCumulative)
+    {
+        for (int i = 0; i < allSlots; i++)
+        {
+                if (slot[i].GetComponent<Slot>().cumulative && slot[i].GetComponent<Slot>().ID == itemID)
+                {
+                    itemObject.GetComponent<Item>().pickedUp = true;
+
+                    var thisSlot = slot[i].GetComponent<Slot>();
+
+                    thisSlot.item = itemObject;
+                    thisSlot.ID = itemID;
+                    thisSlot.icon = itemIcon;
+
+                    thisSlot.cumulative = itemCumulative;
+                    thisSlot.maxCumulative = itemMaxCumulative;
+
+                    itemObject.transform.parent = slot[i].transform;
+                    itemObject.GetComponent<Item>().mySlot = i;
+                    itemObject.SetActive(false);
+
+                    thisSlot.empty = false;
+
+                    thisSlot.UpdateSlot();
+
+                    thisSlot.slotNumber = i;
+
+                if (slot[i] == currentSlot)
+                {
+                    currentSlotImage.transform.position = slot[currentSlotNum].transform.position;
+
+                    slot[i].GetComponent<Slot>().UseItem();
+
+                }
+                break;
+                }
+
+                if (slot[i].GetComponent<Slot>().empty)
+                {
+                    itemObject.GetComponent<Item>().pickedUp = true;
+
+                    var thisSlot = slot[i].GetComponent<Slot>();
+
+                    thisSlot.item = itemObject;
+                    thisSlot.ID = itemID;
+                    thisSlot.icon = itemIcon;
+
+                    thisSlot.cumulative = itemCumulative;
+                    thisSlot.maxCumulative = itemMaxCumulative;
+
+                    itemObject.transform.parent = slot[i].transform;
+                    itemObject.GetComponent<Item>().mySlot = i;
+
+                    thisSlot.UpdateSlot();
+
+                    itemObject.SetActive(false);
+
+                    thisSlot.empty = false;
+
+                    thisSlot.slotNumber = i;
+
+                if (slot[i] == currentSlot)
+                {
+                    currentSlotImage.transform.position = slot[currentSlotNum].transform.position;
+
+                    slot[i].GetComponent<Slot>().UseItem();
+
+                }
+                break;
+            }
+            
+        }
+    }
+
+    void TakeItem()
+    {
+        GameObject itemPickedUp = ItemHit.gameObject;
+
+        Item item = itemPickedUp.GetComponent<Item>();
+
+        AddItem(itemPickedUp, item.ID, item.type.ToString(), item.damage, item.icon, item.cumulative, item.maxCumulative);
+    }
+}
