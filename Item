@@ -1,0 +1,205 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Item : MonoBehaviour
+{
+    [Header("ITEM STATS")]
+    public int ID;
+
+    public enum Type
+    {
+        Weapon,
+        Food,
+        Mineral,
+        Other,
+    }
+
+    public int durability;
+
+    public int extractForce;
+
+    public int extractDamage = 2;
+
+    public int foodSatisfy;
+
+    public Type type;
+
+    public int damage;
+    public Sprite icon;
+
+    public bool cumulative;
+    [HideInInspector] public int maxCumulative;
+
+
+    [Header("ITEMS PROPERTIES")]
+
+    [HideInInspector] public bool pickedUp;
+
+    [HideInInspector] public bool equipped;
+
+    [HideInInspector] public GameObject weaponManager;
+
+    [HideInInspector] public GameObject weapon;
+
+    [HideInInspector] public bool playerWeapon;
+
+    GameObject player;
+
+    Outline outline;
+
+    [HideInInspector] public int mySlot;
+
+    Inventory inv;
+
+    private void Start()
+    {
+        outline = GetComponent<Outline>();
+
+        weaponManager = GameObject.FindWithTag("WeaponManager");
+        player = GameObject.FindWithTag("Player");
+        inv = player.GetComponent<Inventory>();
+
+        if (!playerWeapon)
+        {
+            int allWeapons = weaponManager.transform.childCount;
+
+            for (int i = 0; i < allWeapons; i++)
+            {
+                if(weaponManager.transform.GetChild(i).gameObject.GetComponent<Item>().ID == ID)
+                {
+                    weapon = weaponManager.transform.GetChild(i).gameObject;
+                }
+            }
+        }
+    }
+
+
+    private void Update()
+    {
+        if (inv.ItemHit == this.gameObject)
+        {
+            outline.enabled = true;
+        }
+        else
+        {
+            outline.enabled = false;
+        }
+
+        if (equipped)
+        {
+            if (Input.GetKeyDown(KeyCode.T))
+            {
+                equipped = false;
+            }
+
+            if(equipped == false)
+            {
+                gameObject.SetActive(false);
+            }
+
+            if (Input.GetKeyDown(KeyCode.Q) && !inv.activar_inv)
+            {
+                DropItem();
+            }
+        }
+
+    }
+
+    public Slot rrr;
+
+    public void DropItem()
+    {
+        var slot = inv.slot[mySlot].GetComponent<Slot>();
+
+        var thisItem = slot.transform.GetChild(1);
+
+        rrr = thisItem.GetComponent<Slot>();
+
+        if (slot.cumulative)
+        {
+            if (slot.currentCumulative > 1)
+            {
+                thisItem.transform.SetParent(null);
+                thisItem.transform.position = player.GetComponent<PlayerMovement>().drowItemsPoint.position;
+                thisItem.transform.rotation = player.GetComponent<PlayerMovement>().drowItemsPoint.rotation;
+                thisItem.gameObject.SetActive(true);
+                thisItem.GetComponent<Rigidbody>().velocity = thisItem.forward * 5;
+
+                slot.UpdateSlot();
+            }
+
+            else
+            {
+                equipped = false;
+                pickedUp = false;
+
+                if (inv.currentItem != null)
+                {
+                    inv.currentItem.gameObject.SetActive(false);
+                    inv.currentItem = null;
+                }
+                slot.item = null;
+                slot.ID = 0;
+                slot.type = "";
+                //slot.damage = 0;
+                slot.icon = slot.GetComponent<Slot>().emptyIcon;
+
+                slot.empty = true;
+
+                thisItem.transform.SetParent(null);
+                thisItem.transform.position = player.GetComponent<PlayerMovement>().drowItemsPoint.position;
+                thisItem.transform.rotation = player.GetComponent<PlayerMovement>().drowItemsPoint.rotation;
+                thisItem.gameObject.SetActive(true);
+                thisItem.GetComponent<Rigidbody>().velocity = thisItem.forward * 5;
+                slot.UpdateSlot();
+
+                gameObject.SetActive(false);
+            }
+
+
+        }
+        else
+        {
+            equipped = false;
+            pickedUp = false;
+
+            if(inv.currentItem != null)
+            {
+                inv.currentItem.gameObject.SetActive(false);
+                inv.currentItem = null;
+            }
+
+            slot.item = null;
+            slot.ID = 0;
+            slot.type = "";
+            //slot.damage = 0;
+            slot.icon = slot.GetComponent<Slot>().emptyIcon;
+
+            slot.empty = true;
+
+            thisItem.transform.SetParent(null);
+            thisItem.transform.position = player.GetComponent<PlayerMovement>().drowItemsPoint.position;
+            thisItem.transform.rotation = player.GetComponent<PlayerMovement>().drowItemsPoint.rotation;
+            thisItem.gameObject.SetActive(true);
+            thisItem.GetComponent<Rigidbody>().velocity = thisItem.forward * 5;
+
+            slot.UpdateSlot();
+
+            gameObject.SetActive(false);
+        }
+    }
+
+    public void ItemUsage()
+    {
+            weapon.SetActive(true);
+
+            weapon.GetComponent<Item>().mySlot = gameObject.GetComponentInParent<Slot>().slotNumber;
+
+            weapon.GetComponent<Item>().equipped = true;
+
+            var player = GameObject.FindWithTag("Player");
+
+            player.GetComponent<Inventory>().currentItem = weapon.GetComponent<Item>();
+    }
+}
