@@ -1,0 +1,165 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.EventSystems;
+
+public class Slot : MonoBehaviour
+{
+    public GameObject item;
+    public int ID;
+    public string type;
+    //public int damage;
+
+    public bool empty;
+    public Sprite icon;
+    public Sprite emptyIcon;
+
+    public bool cumulative;
+    public int currentCumulative;
+    public int maxCumulative;
+
+    [HideInInspector]public Transform slotIconGameObject;
+
+    public Text cumulativeTextCount;
+
+    [HideInInspector]public int slotNumber;
+
+    [HideInInspector]public Inventory inv;
+
+    public bool mouseOver;
+
+    PlayerMovement player;
+
+    private void Start()
+    {
+        inv = GameObject.FindWithTag("Player").GetComponent<Inventory>();
+        player = GameObject.FindWithTag("Player").GetComponent<PlayerMovement>();
+
+        slotIconGameObject = transform.GetChild(0);
+    }
+
+    private void Update()
+    {
+        if(mouseOver && Input.GetKeyDown(KeyCode.Q))
+        {
+            if (!empty)
+            {
+                DropItem();
+            }
+        }
+    }
+
+    public void MouseOverOn()
+    {
+        mouseOver = true;
+    }
+
+    public void MouseOverOFF()
+    {
+        mouseOver = false;
+    }
+
+    public void UpdateSlot()
+    {
+        slotIconGameObject.GetComponent<Image>().sprite = icon;
+
+        var count = transform.childCount - 1;
+
+        currentCumulative = count;
+
+        if (currentCumulative > 1)
+        {
+            cumulativeTextCount.text = count.ToString();
+        }
+        else
+        {
+            cumulativeTextCount.text = null;
+        }
+
+    }
+
+    public void UseItem()
+    {
+        if (!empty)
+        {
+            if (inv.currentItem)
+            {
+                inv.currentItem.gameObject.SetActive(false);
+            }
+
+            item.GetComponent<Item>().ItemUsage();
+        }
+    }
+
+    void DropItem()
+    {
+        var slot = GetComponent<Slot>();
+
+        var thisItem = slot.transform.GetChild(1);
+
+        if (slot.cumulative)
+        {
+            if (slot.currentCumulative > 1)
+            {
+                thisItem.transform.SetParent(null);
+                thisItem.transform.position = player.GetComponent<PlayerMovement>().drowItemsPoint.position;
+                thisItem.transform.rotation = player.GetComponent<PlayerMovement>().drowItemsPoint.rotation;
+                thisItem.gameObject.SetActive(true);
+                thisItem.GetComponent<Rigidbody>().velocity = thisItem.forward * 5;
+
+                slot.UpdateSlot();
+            }
+
+            else
+            {
+                if (inv.currentItem != null)
+                {
+                    inv.currentItem.gameObject.SetActive(false);
+                    inv.currentItem = null;
+                }
+                slot.item = null;
+                slot.ID = 0;
+                slot.type = "";
+                //slot.damage = 0;
+                slot.icon = slot.GetComponent<Slot>().emptyIcon;
+
+                slot.empty = true;
+
+                thisItem.transform.SetParent(null);
+                thisItem.transform.position = player.GetComponent<PlayerMovement>().drowItemsPoint.position;
+                thisItem.transform.rotation = player.GetComponent<PlayerMovement>().drowItemsPoint.rotation;
+                thisItem.gameObject.SetActive(true);
+                thisItem.GetComponent<Rigidbody>().velocity = thisItem.forward * 5;
+                slot.UpdateSlot();
+            }
+
+
+        }
+        else
+        {
+            slot.item = null;
+            slot.ID = 0;
+            slot.type = "";
+            //slot.damage = 0;
+            slot.icon = slot.GetComponent<Slot>().emptyIcon;
+
+            slot.empty = true;
+
+            thisItem.transform.SetParent(null);
+            thisItem.transform.position = player.GetComponent<PlayerMovement>().drowItemsPoint.position;
+            thisItem.transform.rotation = player.GetComponent<PlayerMovement>().drowItemsPoint.rotation;
+            thisItem.gameObject.SetActive(true);
+            thisItem.GetComponent<Rigidbody>().velocity = thisItem.forward * 5;
+
+            slot.UpdateSlot();
+        }
+
+        if(inv.currentItem != null && inv.currentSlot == this.gameObject)
+        {
+            inv.currentItem.gameObject.SetActive(false);
+            inv.currentItem = null;
+
+        }
+    }
+}
